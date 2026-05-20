@@ -63,7 +63,7 @@ class SalesQueryParams(BaseModel):
     min_price: float | None = None
     max_price: float | None = None
     venue: str | None = None
-    limit: int = Field(default=100, ge=1, le=500)
+    limit: int = Field(default=100, ge=1, le=10000)
     sort_by: Literal["price", "date", "domain"] = "price"
     sort_order: Literal["asc", "desc"] = "desc"
 

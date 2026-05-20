@@ -58,7 +58,7 @@ async def get_sales(
     min_price: float | None = Query(None, ge=0, description="Minimum sale price in USD"),
     max_price: float | None = Query(None, ge=0, description="Maximum sale price in USD"),
     venue: str | None = Query(None, description="Filter by marketplace venue, e.g. GoDaddy"),
-    limit: int = Query(100, ge=1, le=500, description="Maximum number of sales to return"),
+    limit: int = Query(100, ge=1, le=10000, description="Maximum number of sales to return"),
     sort_by: str = Query("price", pattern="^(price|date|domain)$"),
     sort_order: str = Query("desc", pattern="^(asc|desc)$"),
 ) -> SalesResponse:
@@ -95,7 +95,7 @@ async def get_sales(
 async def get_weekly_top_sales(
     extensions: str | None = Query(None, description="Comma-separated TLD filters"),
     min_price: float | None = Query(None, ge=0),
-    limit: int = Query(50, ge=1, le=500),
+    limit: int = Query(50, ge=1, le=10000),
     end_date: date | None = Query(None, description="Week ending date (defaults to yesterday)"),
 ) -> SalesResponse:
     """Return the highest-priced domain sales from the last 7 days."""

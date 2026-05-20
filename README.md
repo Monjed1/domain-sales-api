@@ -250,7 +250,7 @@ Example response:
 |-----------|--------|---------|----------|
 | `sort_by` | `price`, `date`, `domain` | `price` | You want cheapest, alphabetical, etc. |
 | `sort_order` | `asc`, `desc` | `desc` | Ascending vs descending |
-| `limit` | 1–500 | 100 | Control response size |
+| `limit` | 1–10000 | 100 | Control response size |
 
 ```bash
 # Cheapest .com sales this week
@@ -349,7 +349,7 @@ First request for a date range may take **10–30 seconds** (scraping + cache). 
 | `min_price` | float | — | Minimum USD price |
 | `max_price` | float | — | Maximum USD price |
 | `venue` | string | — | Partial match, e.g. `GoDaddy` |
-| `limit` | int | 100 | Max results (1–500) |
+| `limit` | int | 100 | Max results (1–10000) |
 | `sort_by` | string | `price` | `price`, `date`, `domain` |
 | `sort_order` | string | `desc` | `asc` or `desc` |
 
@@ -359,7 +359,7 @@ First request for a date range may take **10–30 seconds** (scraping + cache). 
 |-----------|------|---------|-------------|
 | `extensions` | string | — | Comma-separated TLDs |
 | `min_price` | float | — | Minimum USD price |
-| `limit` | int | 50 | Max results (1–500) |
+| `limit` | int | 50 | Max results (1–10000) |
 | `end_date` | date | — | Week ending date (defaults to latest report) |
 
 ### `/api/v1/sales/stats` and `/api/v1/sales/extensions`

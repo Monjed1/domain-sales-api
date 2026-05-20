@@ -91,7 +91,7 @@ class SalesService:
         sales_response = await self.get_sales(
             params.model_copy(
                 update={
-                    "limit": 500,
+                    "limit": 10000,
                     "sort_by": "price",
                     "start_date": start_date,
                     "end_date": end_date,
@@ -140,7 +140,7 @@ class SalesService:
         params: SalesQueryParams,
     ) -> list[str]:
         sales_response = await self.get_sales(
-            params.model_copy(update={"limit": 500, "extensions": []})
+            params.model_copy(update={"limit": 10000, "extensions": []})
         )
         extensions = sorted({sale.extension for sale in sales_response.sales})
         return extensions

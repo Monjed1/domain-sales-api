@@ -65,7 +65,7 @@ In **HTTP Request** → **Send Query Parameters** → add parameters:
 |------|---------|--------|
 | period | week | day, week, month, custom |
 | extensions | com,ai | comma-separated, no leading dot |
-| limit | 50 | 1–500 |
+| limit | 50 | 1–10000 |
 | sort_by | price | price, date, domain |
 | sort_order | desc | asc or desc |
 | min_price | 5000 | optional |
