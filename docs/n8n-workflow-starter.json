@@ -1,0 +1,54 @@
+{
+  "name": "Domain Sales API - Starter",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "a1b2c3d4-manual",
+      "name": "When clicking 'Test workflow'",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://127.0.0.1:7852/api/v1/sales",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "period", "value": "week" },
+            { "name": "extensions", "value": "com" },
+            { "name": "limit", "value": "5" },
+            { "name": "sort_by", "value": "price" },
+            { "name": "sort_order", "value": "desc" }
+          ]
+        },
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "e5f6g7h8-http",
+      "name": "Fetch domain sales",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [260, 0]
+    }
+  ],
+  "connections": {
+    "When clicking 'Test workflow'": {
+      "main": [
+        [
+          {
+            "node": "Fetch domain sales",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

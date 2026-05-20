@@ -17,9 +17,10 @@ Production-ready REST API that scrapes daily domain sales data from [DropDax](ht
 4. [Query Parameters](#query-parameters)
 5. [Response Fields](#response-fields)
 6. [Common Use Cases](#common-use-cases)
-7. [Deploy to GitHub & VPS](#deploy-to-github--vps)
-8. [Configuration](#configuration)
-9. [Architecture](#architecture)
+7. [Using with n8n](#using-with-n8n)
+8. [Deploy to GitHub & VPS](#deploy-to-github--vps)
+9. [Configuration](#configuration)
+10. [Architecture](#architecture)
 
 ---
 
@@ -470,6 +471,25 @@ $data.sales | Export-Csv -Path "top-com-sales.csv" -NoTypeInformation
 ```bash
 curl "http://localhost:7852/api/v1/sales/extensions?period=week"
 ```
+
+---
+
+## Using with n8n
+
+[n8n](https://n8n.io/) can call this API with the **HTTP Request** node (GET, query parameters, JSON body parsing).
+
+**Full guide (recommended):** **[docs/N8N.md](docs/N8N.md)** — prerequisites (n8n Cloud vs self-hosted), variables, query params, splitting the `sales` array, schedules, Sheets/Slack examples, timeouts, and errors.
+
+**Starter workflow:** import **[docs/n8n-workflow-starter.json](docs/n8n-workflow-starter.json)** in n8n (**Workflows** → **Import from File**), then change the URL from `http://127.0.0.1:7852` to your VPS or public domain.
+
+**Minimal checklist**
+
+1. Use **GET** and URL `YOUR_BASE/api/v1/sales` (or `/api/v1/sales/weekly-top`, etc.).
+2. Enable **Send Query Parameters** for `period`, `extensions`, `limit`, etc.
+3. Set **Timeout** to **60000** ms (scraping can be slow the first time).
+4. Use **Split Out Items** on field `sales` to get one n8n item per domain sale.
+
+If n8n runs in Docker on the same VPS as this API, see **n8n and the API on the same VPS** in [DEPLOY.md](DEPLOY.md#n8n-and-the-api-on-the-same-vps).
 
 ---
 

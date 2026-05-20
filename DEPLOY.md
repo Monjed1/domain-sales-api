@@ -86,10 +86,10 @@ On your PC, push to GitHub:
 ```bash
 git add .
 git commit -m "Your change description"
-git push
+git push origin main
 ```
 
-On the VPS:
+On the VPS (pull latest docs, n8n guide, and code — **run this after every GitHub update**):
 
 ```bash
 cd /opt/domain-sales-api
@@ -100,9 +100,12 @@ chmod +x deploy/deploy.sh
 Or manually:
 
 ```bash
+cd /opt/domain-sales-api
 git pull origin main
 docker compose -f docker-compose.prod.yml up -d --build
 ```
+
+**After updating:** n8n workflows do not need changes unless the API URL or contract changed. If you only added documentation, rebuilding the container is optional but `git pull` keeps `docs/` on disk for your reference.
 
 ## 5. Optional: Nginx + domain + HTTPS
 
@@ -113,7 +116,21 @@ docker compose -f docker-compose.prod.yml up -d --build
 
 The API stays on `127.0.0.1:7852`; Nginx proxies port 80/443 to it.
 
-## Troubleshooting
+## 6. n8n and the API on the same VPS
+
+If **n8n** and this API both run as Docker containers on one server:
+
+1. **Simplest:** expose the API on the host (`7852:7852` as in `docker-compose.prod.yml`) and call it from n8n using `http://YOUR_VPS_PUBLIC_IP:7852` or your Nginx HTTPS URL. No extra Docker network needed.
+
+2. **Same Docker Compose network:** add both services under one `docker-compose.yml` with a shared `networks:` entry. From the n8n container, use `http://domain-sales-api:7852` (use the **service name** from compose as hostname).
+
+3. **n8n on host, API in Docker:** use `http://127.0.0.1:7852` from n8n on the host. If n8n is inside Docker and the API is published to the host, use `http://host.docker.internal:7852` (Docker Desktop) or the host gateway IP on Linux.
+
+**n8n Cloud** cannot reach `127.0.0.1` on your laptop for production; use a public URL (VPS + firewall + optional Nginx + HTTPS).
+
+Workflow examples: [docs/N8N.md](docs/N8N.md).
+
+## 7. Troubleshooting
 
 | Issue | Fix |
 |-------|-----|
