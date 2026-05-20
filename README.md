@@ -475,12 +475,12 @@ curl "http://localhost:7852/api/v1/sales/extensions?period=week"
 
 ## Deploy to GitHub & VPS
 
-Repository: **https://github.com/monjed1/domain-sales-api**
+Repository: **https://github.com/Monjed1/domain-sales-api**
 
 See **[DEPLOY.md](DEPLOY.md)** for full VPS setup. Quick deploy on server:
 
 ```bash
-git clone https://github.com/monjed1/domain-sales-api.git /opt/domain-sales-api
+git clone https://github.com/Monjed1/domain-sales-api.git /opt/domain-sales-api
 cd /opt/domain-sales-api
 cp .env.example .env
 docker compose -f docker-compose.prod.yml up -d --build

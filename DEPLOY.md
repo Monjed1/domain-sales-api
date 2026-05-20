@@ -13,13 +13,13 @@ git add .
 git commit -m "Initial commit: Domain Sales Scraper API on port 7852"
 ```
 
-Repository: **https://github.com/monjed1/domain-sales-api**
+Repository: **https://github.com/Monjed1/domain-sales-api**
 
 If the remote is not set yet:
 
 ```bash
 git branch -M main
-git remote add origin https://github.com/monjed1/domain-sales-api.git
+git remote add origin https://github.com/Monjed1/domain-sales-api.git
 git push -u origin main
 ```
 
@@ -62,7 +62,7 @@ ufw enable
 ```bash
 mkdir -p /opt/domain-sales-api
 cd /opt/domain-sales-api
-git clone https://github.com/monjed1/domain-sales-api.git .
+git clone https://github.com/Monjed1/domain-sales-api.git .
 cp .env.example .env
 # optional: nano .env
 docker compose -f docker-compose.prod.yml up -d --build
