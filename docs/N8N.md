@@ -16,7 +16,7 @@ Paths are relative to that base (for example `/api/v1/sales`).
 | Scenario | What you need |
 |----------|----------------|
 | **n8n Cloud** | The API must be **publicly reachable** (HTTPS recommended). Use your VPS URL, domain, or a tunnel (ngrok, Cloudflare Tunnel) for development. |
-| **Self-hosted n8n (Docker)** | Same host as API: often `http://host.docker.internal:7852` (Docker Desktop) or a **shared Docker network** + service hostname (see [DEPLOY.md](../DEPLOY.md#n8n-and-the-api-on-the-same-vps)). |
+| **Self-hosted n8n (Docker)** | Same host as API: often `http://host.docker.internal:7852` (Docker Desktop) or a **shared Docker network** + service hostname (see [DEPLOY.md](../DEPLOY.md#6-n8n-and-the-api-on-the-same-vps)). |
 | **Self-hosted n8n (no Docker)** | `http://127.0.0.1:7852` if the API runs on the same machine. |
 
 The API does **not** use API keys today. Store the base URL in n8n **Variables** or hardcode it in the HTTP Request node.

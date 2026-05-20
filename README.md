@@ -489,7 +489,7 @@ curl "http://localhost:7852/api/v1/sales/extensions?period=week"
 3. Set **Timeout** to **60000** ms (scraping can be slow the first time).
 4. Use **Split Out Items** on field `sales` to get one n8n item per domain sale.
 
-If n8n runs in Docker on the same VPS as this API, see **n8n and the API on the same VPS** in [DEPLOY.md](DEPLOY.md#n8n-and-the-api-on-the-same-vps).
+If n8n runs in Docker on the same VPS as this API, see **n8n and the API on the same VPS** in [DEPLOY.md](DEPLOY.md#6-n8n-and-the-api-on-the-same-vps).
 
 ---
 
