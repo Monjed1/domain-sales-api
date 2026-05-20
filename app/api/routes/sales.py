@@ -156,7 +156,7 @@ async def get_stats(
         None,
         None,
         None,
-        500,
+        10000,
         "price",
         "desc",
     )
@@ -182,7 +182,7 @@ async def get_extensions(
         None,
         None,
         None,
-        500,
+        10000,
         "price",
         "desc",
     )
