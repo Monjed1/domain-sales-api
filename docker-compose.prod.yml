@@ -1,0 +1,26 @@
+# Production stack for VPS deployment
+services:
+  api:
+    build: .
+    container_name: domain-sales-api
+    ports:
+      - "7852:7852"
+    env_file:
+      - .env
+    environment:
+      PORT: "7852"
+      HOST: "0.0.0.0"
+      DEBUG: "false"
+    restart: always
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import os, urllib.request; urllib.request.urlopen(f'http://127.0.0.1:{os.getenv(\"PORT\", \"7852\")}/api/v1/health')",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 25s
