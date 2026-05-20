@@ -314,7 +314,9 @@ for sale in data["sales"]:
 | `200` | Success | — |
 | `400` | Bad request | `period=custom` without dates, invalid dates |
 | `404` | Not found | No DropDax report for `daily/{date}` |
-| `500` | Server error | DropDax unreachable; retry later |
+| `502` | Bad gateway | DropDax/CDN error (502/503/504); retry later |
+| `503` | Unavailable | DropDax rate limit (429) after retries; wait ~2 min, use `period=week` or `day` |
+| `500` | Server error | Unexpected application error |
 
 First request for a date range may take **10–30 seconds** (scraping + cache). Later requests are faster (1-hour cache).
 
@@ -533,7 +535,12 @@ Copy `.env.example` to `.env`:
 | `PORT` | `7852` | Server port |
 | `DEBUG` | `false` | Debug mode |
 | `CACHE_TTL_SECONDS` | `3600` | Cache lifetime (seconds) |
-| `REQUEST_TIMEOUT` | `30` | HTTP timeout when scraping |
+| `REQUEST_TIMEOUT` | `60` | HTTP timeout when scraping |
+| `MAX_CONCURRENT_REQUESTS` | `1` | Parallel requests to DropDax (keep low) |
+| `SCRAPE_DELAY_SECONDS` | `1.5` | Pause between each DropDax request |
+| `SCRAPE_MAX_RETRIES` | `6` | Retries on 429 / 502 / 503 / 504 |
+| `SCRAPE_RETRY_MIN_SECONDS` | `2` | Minimum backoff between retries |
+| `SCRAPE_RETRY_MAX_SECONDS` | `60` | Maximum backoff between retries |
 
 ---
 
@@ -557,7 +564,7 @@ Data is sourced from DropDax blog daily reports. Each report includes summary st
 
 - DropDax publishes one report per trading day; `period=week` aggregates up to 7 daily reports.
 - The main DropDax data engine (`dropdax.com/?date=...`) is Cloudflare-protected; this API uses publicly accessible blog reports.
-- Respect DropDax terms of service and use reasonable request rates (built-in caching and concurrency limits).
+- Respect DropDax terms of service. The API throttles requests (1 at a time, ~1.5s delay) and retries 429/502 errors. **`period=month`** fetches many pages and may take several minutes; if you hit rate limits, use `week` or `day`, or increase `SCRAPE_DELAY_SECONDS` in `.env`.
 - Additional marketplaces can be added by implementing new scrapers under `app/scrapers/`.
 
 ---

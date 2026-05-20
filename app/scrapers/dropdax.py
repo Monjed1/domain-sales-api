@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import re
+import time
 from datetime import date, datetime, timedelta
 from typing import Iterable
 from urllib.parse import urljoin
@@ -9,11 +11,22 @@ from urllib.parse import urljoin
 import httpx
 from bs4 import BeautifulSoup, Tag
 from dateutil import parser as date_parser
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import (
+    RetryError,
+    retry,
+    retry_if_exception,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 from app.core.cache import cache_key, cache_service
 from app.core.config import get_settings
 from app.models.schemas import DailyReport, DailyReportSummary, DomainSale, Marketplace
+from app.scrapers.errors import DropDaxRateLimitError, DropDaxUpstreamError
+
+logger = logging.getLogger(__name__)
+
+RETRYABLE_STATUS_CODES = frozenset({429, 502, 503, 504})
 
 REPORT_LINK_PATTERN = re.compile(
     r"/blog/daily-domain-market-report-[a-z0-9-]+/?$",
@@ -45,11 +58,38 @@ MULTI_PART_TLDS = {
 }
 
 
+def _is_retryable_error(exc: BaseException) -> bool:
+    if isinstance(exc, httpx.HTTPStatusError):
+        return exc.response.status_code in RETRYABLE_STATUS_CODES
+    return isinstance(
+        exc,
+        (
+            httpx.TimeoutException,
+            httpx.ConnectError,
+            httpx.ReadError,
+            httpx.RemoteProtocolError,
+        ),
+    )
+
+
+def _raise_dropdax_error(exc: httpx.HTTPStatusError) -> None:
+    code = exc.response.status_code
+    if code == 429:
+        raise DropDaxRateLimitError() from exc
+    if code in {502, 503, 504}:
+        raise DropDaxUpstreamError(
+            f"DropDax returned HTTP {code}. Please retry in a few minutes."
+        ) from exc
+    raise exc
+
+
 class DropDaxScraper:
     def __init__(self) -> None:
         self.settings = get_settings()
         self.base_url = self.settings.dropdax_base_url.rstrip("/")
         self._semaphore = asyncio.Semaphore(self.settings.max_concurrent_requests)
+        self._throttle_lock = asyncio.Lock()
+        self._last_request_at = 0.0
 
     def _headers(self) -> dict[str, str]:
         return {
@@ -58,26 +98,82 @@ class DropDaxScraper:
             "Accept-Language": "en-US,en;q=0.9",
         }
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=1, max=8))
-    async def _fetch(self, client: httpx.AsyncClient, url: str) -> str:
-        async with self._semaphore:
-            response = await client.get(url, headers=self._headers(), follow_redirects=True)
-            if response.status_code == 404:
-                raise httpx.HTTPStatusError(
-                    "Not found",
-                    request=response.request,
-                    response=response,
+    def _retry_wait(self) -> wait_exponential:
+        return wait_exponential(
+            multiplier=2,
+            min=self.settings.scrape_retry_min_seconds,
+            max=self.settings.scrape_retry_max_seconds,
+        )
+
+    async def _throttle(self) -> None:
+        delay = self.settings.scrape_delay_seconds
+        if delay <= 0:
+            return
+        async with self._throttle_lock:
+            elapsed = time.monotonic() - self._last_request_at
+            if elapsed < delay:
+                await asyncio.sleep(delay - elapsed)
+            self._last_request_at = time.monotonic()
+
+    async def _get_html(
+        self,
+        client: httpx.AsyncClient,
+        url: str,
+        *,
+        allow_404: bool = False,
+    ) -> str | None:
+        @retry(
+            retry=retry_if_exception(_is_retryable_error),
+            stop=stop_after_attempt(self.settings.scrape_max_retries),
+            wait=self._retry_wait(),
+            reraise=True,
+        )
+        async def _request() -> str:
+            await self._throttle()
+            async with self._semaphore:
+                response = await client.get(
+                    url,
+                    headers=self._headers(),
+                    follow_redirects=True,
                 )
-            response.raise_for_status()
+
+            if allow_404 and response.status_code == 404:
+                return ""
+
+            if response.status_code in RETRYABLE_STATUS_CODES:
+                response.raise_for_status()
+
+            try:
+                response.raise_for_status()
+            except httpx.HTTPStatusError as exc:
+                _raise_dropdax_error(exc)
+
             return response.text
 
+        try:
+            body = await _request()
+        except RetryError as exc:
+            cause = exc.last_attempt.exception()
+            if isinstance(cause, httpx.HTTPStatusError):
+                _raise_dropdax_error(cause)
+            raise DropDaxUpstreamError(
+                "DropDax did not respond after multiple retries."
+            ) from exc
+        except httpx.HTTPStatusError as exc:
+            _raise_dropdax_error(exc)
+            raise
+
+        if body == "" and allow_404:
+            return None
+        return body
+
+    async def _fetch(self, client: httpx.AsyncClient, url: str) -> str:
+        html = await self._get_html(client, url, allow_404=False)
+        assert html is not None
+        return html
+
     async def _fetch_page(self, client: httpx.AsyncClient, url: str) -> str | None:
-        async with self._semaphore:
-            response = await client.get(url, headers=self._headers(), follow_redirects=True)
-            if response.status_code == 404:
-                return None
-            response.raise_for_status()
-            return response.text
+        return await self._get_html(client, url, allow_404=True)
 
     async def list_reports(self, max_pages: int = 10) -> list[DailyReportSummary]:
         key = cache_key("dropdax", "reports", str(max_pages))
@@ -90,7 +186,17 @@ class DropDaxScraper:
         async with httpx.AsyncClient(timeout=self.settings.request_timeout) as client:
             for page in range(1, max_pages + 1):
                 page_url = self._category_url(page)
-                html = await self._fetch_page(client, page_url)
+                try:
+                    html = await self._fetch_page(client, page_url)
+                except (DropDaxRateLimitError, DropDaxUpstreamError):
+                    if reports:
+                        logger.warning(
+                            "Stopped listing reports at page %s; using %s entries already found",
+                            page,
+                            len(reports),
+                        )
+                        break
+                    raise
                 if html is None:
                     break
                 page_reports = self._parse_category_page(html)
@@ -189,11 +295,56 @@ class DropDaxScraper:
             if start_date <= report.report_date <= end_date
         ]
 
-        tasks = [self._fetch_report(report.source_url) for report in selected]
-        if not tasks:
+        if not selected:
             return []
 
-        return await asyncio.gather(*tasks)
+        fetched: list[DailyReport] = []
+        failed_urls: list[str] = []
+
+        async with httpx.AsyncClient(timeout=self.settings.request_timeout) as client:
+            for index, summary in enumerate(selected, start=1):
+                try:
+                    html = await self._fetch(client, summary.source_url)
+                    fetched.append(
+                        self._parse_report_page(html, summary.source_url)
+                    )
+                except (DropDaxRateLimitError, DropDaxUpstreamError):
+                    if fetched:
+                        logger.warning(
+                            "Stopped at report %s/%s due to DropDax limits; returning partial data",
+                            index - 1,
+                            len(selected),
+                        )
+                        return fetched
+                    raise
+                except httpx.HTTPStatusError as exc:
+                    logger.warning(
+                        "Skipping %s: HTTP %s",
+                        summary.source_url,
+                        exc.response.status_code,
+                    )
+                    failed_urls.append(summary.source_url)
+                except Exception as exc:
+                    logger.warning("Skipping %s: %s", summary.source_url, exc)
+                    failed_urls.append(summary.source_url)
+
+        if not fetched:
+            if failed_urls:
+                raise DropDaxUpstreamError(
+                    "Could not fetch any daily reports from DropDax. "
+                    "Try again later or use period=week or period=day."
+                )
+            return []
+
+        if failed_urls:
+            logger.info(
+                "Fetched %s/%s reports (%s skipped)",
+                len(fetched),
+                len(selected),
+                len(failed_urls),
+            )
+
+        return fetched
 
     def _parse_report_page(self, html: str, source_url: str) -> DailyReport:
         soup = BeautifulSoup(html, "lxml")

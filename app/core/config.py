@@ -17,9 +17,13 @@ class Settings(BaseSettings):
     port: int = 7852
     api_prefix: str = "/api/v1"
 
-    request_timeout: float = 30.0
+    request_timeout: float = 60.0
     cache_ttl_seconds: int = 3600
-    max_concurrent_requests: int = 5
+    max_concurrent_requests: int = 1
+    scrape_delay_seconds: float = 1.5
+    scrape_max_retries: int = 6
+    scrape_retry_min_seconds: float = 2.0
+    scrape_retry_max_seconds: float = 60.0
     user_agent: str = (
         "DomainSalesAPI/1.0 (+https://github.com/domain-sales-api; research use)"
     )
